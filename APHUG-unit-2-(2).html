@@ -1,0 +1,871 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Population Recall Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+/* Layout: a single study column with a census-style header (pyramid mark + session tally) and four recall modes as tabs */
+:root{
+  --bg:#ECEFF3; --surface:#FFFFFF; --sunk:#F4F6F9; --ink:#17202B; --muted:#586374; --line:#D3D9E1;
+  --accent:#0E6B70; --accent-soft:#DCEEEF; --accent-ink:#FFFFFF;
+  --warm:#9C7400; --warm-soft:#F5ECD2;
+  --good:#22713A; --good-soft:#E1F1E5; --bad:#B42318; --bad-soft:#FBE4E1;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue","Segoe UI",Roboto,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F141B; --surface:#171E28; --sunk:#121820; --ink:#E5E9EF; --muted:#97A2B3; --line:#2A3443;
+  --accent:#55B6BB; --accent-soft:#16363A; --accent-ink:#071A1B;
+  --warm:#D8AE3E; --warm-soft:#3A3016;
+  --good:#63C27A; --good-soft:#163222; --bad:#F2776C; --bad-soft:#3D1C1A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F141B; --surface:#171E28; --sunk:#121820; --ink:#E5E9EF; --muted:#97A2B3; --line:#2A3443;
+  --accent:#55B6BB; --accent-soft:#16363A; --accent-ink:#071A1B;
+  --warm:#D8AE3E; --warm-soft:#3A3016;
+  --good:#63C27A; --good-soft:#163222; --bad:#F2776C; --bad-soft:#3D1C1A; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:17px;line-height:1.5}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{padding-block:28px 18px}
+.head{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.brand{display:flex;gap:14px;align-items:center;min-width:0}
+.brand svg{flex:none;width:52px;height:46px}
+.brand .m{fill:var(--accent)} .brand .f{fill:var(--warm)}
+.eyebrow{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{margin:2px 0 0;font-family:var(--display);letter-spacing:-.02em;font-weight:800;font-size:clamp(28px,6vw,38px);line-height:1.05;text-wrap:balance}
+.lede{margin:6px 0 0;color:var(--muted);font-size:15px}
+.tally{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:right}
+.tally b{display:block;font-size:26px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+nav.tabs{display:flex;gap:4px;padding:4px;background:var(--sunk);border:1px solid var(--line);border-radius:12px;overflow-x:auto}
+nav.tabs button{flex:1 0 auto;border:0;background:transparent;color:var(--muted);font:600 15px var(--body);padding:10px 14px;border-radius:9px;cursor:pointer;white-space:nowrap}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+main{padding-block:18px 48px}
+.intro{margin:0 0 14px;color:var(--muted);font-size:15px;max-width:62ch}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;color:var(--muted);font:600 14px var(--body);padding:7px 13px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.count{font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px clamp(16px,4vw,28px);display:grid;gap:14px}
+.label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
+.prompt{margin:0;font-size:clamp(19px,3.4vw,23px);line-height:1.35;font-weight:600;text-wrap:pretty}
+.prompt.term{font-family:var(--display);letter-spacing:-.02em;font-weight:800;font-size:clamp(26px,5vw,34px)}
+input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px}
+textarea{min-height:130px;resize:vertical;line-height:1.45}
+input:focus,textarea:focus{outline:none;border-color:var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:600 15px var(--body);padding:9px 16px;border-radius:10px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.good{border-color:var(--good);color:var(--good)} .btn.bad{border-color:var(--bad);color:var(--bad)} .btn.mid{border-color:var(--warm);color:var(--warm)}
+.btn.ghost{border-color:transparent;color:var(--muted);padding-inline:8px}
+.btn:hover{filter:brightness(.97)}
+button:focus-visible,.chip:focus-visible{outline:2.5px solid var(--accent);outline-offset:2px}
+.kbd{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+.fb{border-radius:10px;padding:12px 14px;display:grid;gap:4px}
+.fb.ok{background:var(--good-soft)} .fb.no{background:var(--bad-soft)} .fb.info{background:var(--accent-soft)}
+.fb strong{font-size:15px}
+.fb.ok strong{color:var(--good)} .fb.no strong{color:var(--bad)} .fb.info strong{color:var(--accent)}
+.fb p{margin:0}
+.answer{font-family:var(--display);letter-spacing:-.02em;font-weight:700;font-size:20px}
+.solution{font-family:var(--mono);font-size:14px;line-height:1.6;color:var(--ink)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:600 14px var(--body);padding:6px 12px;border-radius:999px;cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.chip .sc{font-family:var(--mono);font-size:12px;color:var(--muted);margin-left:6px}
+.timer{font-family:var(--mono);font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+ul.check{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+ul.check label{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--line);border-radius:9px;cursor:pointer;background:var(--sunk)}
+ul.check input{margin-top:4px;accent-color:var(--accent);width:17px;height:17px;flex:none}
+ul.check label.on{border-color:var(--good);background:var(--good-soft)}
+.auto{font-family:var(--mono);font-size:11px;color:var(--good);margin-left:auto;white-space:nowrap;padding-left:8px}
+ul.keys{margin:4px 0 0;padding-left:20px}
+ul.keys li{margin:2px 0}
+.big{font-family:var(--display);font-weight:800;letter-spacing:-.02em;font-size:54px;line-height:1;margin:0}
+.missed-list{display:flex;flex-wrap:wrap;gap:6px}
+.missed-list span{background:var(--bad-soft);color:var(--bad);border-radius:6px;padding:3px 9px;font-size:14px;font-weight:600}
+.tip{font-size:14px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:no-preference){.fb{animation:pop .18s ease-out}@keyframes pop{from{transform:translateY(3px);opacity:.4}to{transform:none;opacity:1}}}
+
+.seg{max-width:100%;overflow-x:auto}
+.seg button{white-space:nowrap}
+details.sheet{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:14px}
+details.sheet summary{cursor:pointer;padding:14px 18px;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+details.sheet summary::-webkit-details-marker{display:none}
+details.sheet summary::after{content:"Show";font-family:var(--mono);font-size:12px;color:var(--accent)}
+details.sheet[open] summary::after{content:"Hide"}
+details.sheet summary:focus-visible{outline:2.5px solid var(--accent);outline-offset:-2px;border-radius:14px}
+.sheet-body{padding:2px clamp(14px,3vw,22px) 8px;border-top:1px solid var(--line);padding-top:16px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.tbl table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.4;min-width:560px}
+.tbl th,.tbl td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl thead th{background:var(--sunk);font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.tbl tbody tr:last-child td,.tbl tbody tr:last-child th{border-bottom:0}
+.tbl tbody td:first-child{font-weight:700}
+.tbl.profile table{min-width:0}
+.tbl.profile th{width:34%;font-weight:700;color:var(--accent);background:var(--sunk)}
+.tbl.profile td{font-weight:400!important}
+
+.dtm-chart{background:var(--sunk);border-radius:10px;padding:12px 10px 6px;margin:14px 0 4px}
+.dtm-chart svg{width:100%;height:auto;display:block;max-width:560px;margin:0 auto}
+.dtm-chart .ax{stroke:var(--muted);stroke-width:1}
+.dtm-chart .div{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4}
+.dtm-chart .gap{fill:var(--accent-soft);stroke:none}
+.dtm-chart .cbr{fill:none;stroke:var(--warm);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.dtm-chart .cdr{fill:none;stroke:var(--accent);stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.dtm-chart text{font-family:var(--body)}
+.dtm-chart .lbl{fill:var(--muted);font-size:11px}
+.dtm-chart .lcbr{fill:var(--warm);font-size:13px;font-weight:700}
+.dtm-chart .lcdr{fill:var(--accent);font-size:13px;font-weight:700}
+.dtm-chart .lgap{fill:var(--ink);font-size:12px;font-weight:600}
+.st{display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.stages .st:first-child{border-top:0}
+.st.nonum{grid-template-columns:minmax(0,1fr)}
+.st-n{width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:16px;display:grid;place-items:center}
+.st-n.sm{font-size:11px}
+.st h4{margin:5px 0 8px;font-size:17px;letter-spacing:-.01em;line-height:1.25}
+.st p{margin:0 0 8px;font-size:15px;line-height:1.5;max-width:64ch}
+.st p.who{color:var(--muted);font-size:14px;margin-top:-4px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.pills span{display:inline-flex;align-items:baseline;gap:6px;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:13.5px;font-weight:600}
+.pills i{font-style:normal;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.st dl{margin:0;display:grid;gap:5px}
+.st dl div{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;font-size:14px;line-height:1.45}
+.st dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding-top:3px}
+.st dd{margin:0}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap head">
+    <div class="brand">
+      <svg viewBox="0 0 52 46" aria-hidden="true">
+        <rect class="m" x="20" y="0" width="5" height="5"/><rect class="f" x="27" y="0" width="5" height="5"/>
+        <rect class="m" x="16" y="6.5" width="9" height="5"/><rect class="f" x="27" y="6.5" width="9" height="5"/>
+        <rect class="m" x="12" y="13" width="13" height="5"/><rect class="f" x="27" y="13" width="12" height="5"/>
+        <rect class="m" x="8" y="19.5" width="17" height="5"/><rect class="f" x="27" y="19.5" width="16" height="5"/>
+        <rect class="m" x="5" y="26" width="20" height="5"/><rect class="f" x="27" y="26" width="19" height="5"/>
+        <rect class="m" x="2" y="32.5" width="23" height="5"/><rect class="f" x="27" y="32.5" width="22" height="5"/>
+        <rect class="m" x="0" y="39" width="25" height="5"/><rect class="f" x="27" y="39" width="25" height="5"/>
+      </svg>
+      <div>
+        <p class="eyebrow">AP Human Geography · Unit 2</p>
+        <h1>Population Recall Lab</h1>
+      </div>
+    </div>
+    <div class="tally"><b id="tally">0 / 0</b>recalled this session</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs" role="tablist" aria-label="Study modes">
+    <button role="tab" id="tab-terms" data-tab="terms" aria-selected="true">Term recall</button>
+    <button role="tab" id="tab-blurt" data-tab="blurt" aria-selected="false">Brain dump</button>
+    <button role="tab" id="tab-scen" data-tab="scen" aria-selected="false">Explain it</button>
+    <button role="tab" id="tab-num" data-tab="num" aria-selected="false">Models</button>
+  </nav>
+</div>
+
+<main class="wrap">
+  <!-- TERMS -->
+  <section id="pane-terms" role="tabpanel" aria-labelledby="tab-terms">
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Direction">
+        <button id="dir-d2t" aria-pressed="true">Definition → term</button>
+        <button id="dir-t2d" aria-pressed="false">Term → definition</button>
+      </div>
+      <div class="seg" role="group" aria-label="Deck">
+        <button id="deck-all" aria-pressed="true">All terms</button>
+        <button id="deck-weak" aria-pressed="false">My weak terms</button>
+      </div>
+    </div>
+    <div id="term-card"></div>
+  </section>
+
+  <!-- BLURT -->
+  <section id="pane-blurt" role="tabpanel" aria-labelledby="tab-blurt" hidden>
+    <div class="chips" id="blurt-chips"></div>
+    <div id="blurt-card"></div>
+  </section>
+
+  <!-- SCENARIOS -->
+  <section id="pane-scen" role="tabpanel" aria-labelledby="tab-scen" hidden>
+    <div class="bar"><span class="count" id="scen-count"></span></div>
+    <div id="scen-card"></div>
+  </section>
+
+  <!-- MODELS -->
+  <section id="pane-num" role="tabpanel" aria-labelledby="tab-num" hidden>
+    <details class="sheet"><summary>Model study sheet</summary><div class="sheet-body" id="sheet-body"></div></details>
+    <div class="chips" id="num-modes" role="group" aria-label="Question type"></div>
+    <div id="num-card"></div>
+  </section>
+</main>
+
+<script>
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle = a => { for (let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const rand = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem('u2recall:'+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem('u2recall:'+k, JSON.stringify(v)); }catch(e){} }
+};
+const norm = s => s.toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/^the /,'');
+function lev(a,b){ const m=a.length,n=b.length; if(!m) return n; if(!n) return m;
+  let prev=Array.from({length:n+1},(_,i)=>i);
+  for(let i=1;i<=m;i++){ const cur=[i]; for(let j=1;j<=n;j++){ cur[j]=Math.min(prev[j]+1,cur[j-1]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1)); } prev=cur; }
+  return prev[n]; }
+function matches(input, aliases){ const n=norm(input); if(!n) return false;
+  return aliases.some(a=>{ const b=norm(a); if(n===b) return true; const tol=b.length>=10?2:(b.length>=5?1:0); return lev(n,b)<=tol; }); }
+
+let tally = {right:0,total:0};
+function score(ok){ tally.total++; if(ok) tally.right++; $('#tally').textContent = tally.right+' / '+tally.total; }
+function unscoreMiss(){ tally.right++; $('#tally').textContent = tally.right+' / '+tally.total; }
+
+/* ---------- data ---------- */
+const TERMS = [
+ ['Arithmetic density','Total population divided by total land area.',['arithmetic']],
+ ['Physiological density','Total population divided by arable (farmable) land. Shows pressure on food-producing land.',['physiological']],
+ ['Agricultural density','Number of farmers divided by arable land. A high number usually means less mechanized farming.',['agricultural']],
+ ['Carrying capacity','The largest population an area’s environment and resources can support.',[]],
+ ['Ecumene','The part of Earth’s surface that humans permanently live on.',['oikoumene']],
+ ['Crude birth rate','Number of live births per 1,000 people per year.',['CBR']],
+ ['Crude death rate','Number of deaths per 1,000 people per year.',['CDR']],
+ ['Rate of natural increase','The percent a population grows each year from births minus deaths, not counting migration.',['RNI','natural increase rate','natural increase','natural increase rate']],
+ ['Total fertility rate','The average number of children a woman has in her lifetime.',['TFR','fertility rate']],
+ ['Replacement level fertility','A TFR of about 2.1: the level needed to keep a population stable without migration.',['replacement level','replacement rate','replacement fertility','replacement']],
+ ['Infant mortality rate','Deaths of babies under age 1 per 1,000 live births.',['IMR','infant mortality']],
+ ['Life expectancy','The average number of years a newborn is expected to live.',[]],
+ ['Dependency ratio','People under 15 and over 64 compared to the working-age population (15–64).',['dependency']],
+ ['Sex ratio','The number of males per 100 females in a population.',['gender ratio']],
+ ['Population pyramid','A bar graph showing a population’s age and sex structure.',['age sex pyramid','age-sex pyramid','age structure diagram','age structure']],
+ ['Doubling time','The number of years it takes a population to double, roughly 70 ÷ RNI.',['rule of 70']],
+ ['Demographic Transition Model','A five-stage model of how birth and death rates change as a country develops.',['DTM','demographic transition']],
+ ['Epidemiological Transition Model','A model of how the leading causes of death shift from infectious disease to degenerative disease as a country develops.',['ETM','epidemiological transition']],
+ ['Malthusian theory','The 1798 idea that population grows geometrically while food grows arithmetically, so famine will follow.',['Malthus','Thomas Malthus','Malthusianism','Malthusian']],
+ ['Neo-Malthusians','Modern thinkers who argue overpopulation will strain resources like water and energy, not just food.',['neo malthusian','neomalthusian','neo malthusianism']],
+ ['Ester Boserup','Economist who argued that population growth pushes farmers to innovate and grow more food.',['Boserup','Boserup theory','Boserup’s theory']],
+ ['Antinatalist policy','A government policy that discourages births, like China’s one-child policy.',['antinatalist','anti natalist']],
+ ['Pronatalist policy','A government policy that encourages births, like paying families benefits for having children.',['pronatalist','pro natalist']],
+ ['Push factor','A condition that drives people to leave the place they live.',['push factors','push']],
+ ['Pull factor','A condition that attracts people to move to a new place.',['pull factors','pull']],
+ ['Intervening obstacle','A barrier that blocks or slows a migration, like a mountain range or strict visa laws.',['intervening obstacles']],
+ ['Intervening opportunity','Something attractive along the way that makes a migrant stop before the planned destination.',['intervening opportunities']],
+ ['Ravenstein’s laws','Migration rules of thumb, like: most migrants move short distances, and every flow creates a counterflow.',['Ravenstein','Ravensteins laws of migration','laws of migration','Ravenstein laws']],
+ ['Zelinsky\u2019s migration transition model','A model that links each stage of the DTM to the type of migration most common in it.',['Zelinsky','migration transition model','mobility transition','Zelinsky model','Zelinskys model','migration transition']],
+ ['Lee\u2019s push-pull model','Everett Lee\u2019s model: people weigh push factors, pull factors, intervening obstacles, and personal factors before migrating.',['Lee','Lees model','push pull model','Everett Lee','Lee model']],
+ ['Distance decay','The idea that interaction between places drops off as distance increases.',[]],
+ ['Gravity model','Predicts that interaction between two places increases with their population size and decreases with distance.',['gravity model of migration']],
+ ['Chain migration','Migration that follows family or friends who already moved to a place.',[]],
+ ['Step migration','Migration that happens in stages, like village to town to city.',[]],
+ ['Forced migration','Migration where people are made to move against their will by war, persecution, or slavery.',['involuntary migration','forced']],
+ ['Voluntary migration','Migration where a person chooses to move, usually for economic opportunity.',['voluntary']],
+ ['Refugee','A person who flees war, persecution, or disaster and crosses an international border.',['refugees']],
+ ['Internally displaced person','A person forced from their home who stays inside their own country.',['IDP','IDPs','internally displaced persons','internally displaced people']],
+ ['Asylum seeker','A person who has asked another country for protection but hasn’t been approved yet.',['asylum seekers','asylee']],
+ ['Remittances','Money migrants send back to family in their home country.',['remittance']],
+ ['Brain drain','The loss of educated, skilled workers who leave for other countries.',[]],
+ ['Guest workers','Migrants allowed into a country temporarily to fill labor shortages.',['guest worker','gastarbeiter']],
+ ['Transnational migration','Migration from one country to another.',['transnational','international migration']],
+ ['Internal migration','Migration within one country.',['internal']],
+ ['Rural-to-urban migration','Moving from the countryside to cities, the most common migration in developing countries.',['rural to urban','rural urban migration','rural to urban migration']],
+ ['Counterurbanization','Moving from cities to rural areas or small towns.',['counter urbanization','counterurbanisation']],
+ ['Transhumance','Seasonal movement of herders and their livestock between pastures.',[]],
+ ['Net migration','The number of immigrants minus the number of emigrants.',['net migration rate']],
+ ['Emigration','Leaving your country to live somewhere else.',['emigrate','emigrant']],
+ ['Immigration','Moving into a new country to live there.',['immigrate','immigrant']],
+].map(([t,d,a])=>({t,d,a:[t,...a]}));
+
+const BLURTS = [
+ {id:'dtm',title:'The Demographic Transition Model',points:[
+  ['Stage 1: high CBR and high CDR, little to no growth',['stage 1','high birth','pre industrial','preindustrial','hunter']],
+  ['Stage 2: CDR drops fast (medicine, sanitation, food) while CBR stays high, so growth explodes',['stage 2','death rate drop','death rates drop','sanitation','medicine']],
+  ['Stage 3: CBR falls (urbanization, women educated and working, contraception), growth slows',['stage 3','contracept','urban','women']],
+  ['Stage 4: CBR and CDR both low, population stable',['stage 4','stable','both low']],
+  ['Stage 5: CBR below CDR, population shrinks and ages (Japan, Italy)',['stage 5','decline','shrink','japan','italy','aging']],
+  ['Limitation: based on Europe’s history, and some countries get stuck or skip ahead',['europe','limitation','stuck','eurocentric']]]},
+ {id:'etm',title:'The Epidemiological Transition Model',points:[
+  ['Stage 1: pestilence and famine (infectious disease, plague)',['pestilence','famine','plague','black death']],
+  ['Stage 2: receding pandemics as sanitation improves (cholera)',['receding','cholera','sanitation']],
+  ['Stage 3: degenerative and human-created diseases (heart disease, cancer)',['degenerative','heart','cancer']],
+  ['Stage 4: delayed degenerative diseases, medicine extends life',['delayed']],
+  ['Stage 5 (possible): reemergence of infectious disease (antibiotic resistance, new viruses)',['reemerg','re emerg','resist','covid','antibiotic']],
+  ['Links to the DTM: falling CDR in DTM Stage 2 matches ETM Stage 2',['dtm','demographic']]]},
+ {id:'zel',title:'Zelinsky\u2019s migration model',points:[
+  ['Links migration patterns to the stages of the DTM',['dtm','demographic','stage']],
+  ['Stage 1: little migration, mostly local or seasonal',['local','seasonal','little','limited','nomad']],
+  ['Stage 2: lots of international emigration as population grows fast',['emigra','international','abroad']],
+  ['Stage 2: internal rural-to-urban migration',['rural','urban','city','cities']],
+  ['Stages 3 and 4: destinations for immigrants from Stage 2 countries',['immigra','destination','receiv']],
+  ['Stages 3 and 4: internal migration shifts from cities to suburbs',['suburb']]]},
+ {id:'density',title:'Three types of population density',points:[
+  ['Arithmetic = total population ÷ total land',['arithmetic']],
+  ['Physiological = total population ÷ arable land',['physiological']],
+  ['Agricultural = farmers ÷ arable land',['agricultural']],
+  ['Physiological density shows pressure on farmland (Egypt and the Nile)',['egypt','nile','pressure']],
+  ['High agricultural density means less mechanized, less developed farming',['mechan','technolog','develop']],
+  ['Arithmetic density is misleading for countries with lots of empty land (Canada, Russia)',['mislead','canada','russia','empty','desert']]]},
+ {id:'pushpull',title:'Push and pull factors',points:[
+  ['Push factors make people leave; pull factors attract them to a destination',['leave','attract','destination']],
+  ['Economic: jobs, wages, poverty',['job','econom','poverty','wage','money']],
+  ['Political: war, persecution, freedom',['war','persecut','politic','freedom','government']],
+  ['Social or cultural: religion, discrimination, family, education',['religio','cultur','social','discrimin','family','education']],
+  ['Environmental: natural disasters, drought, climate change',['disaster','environment','drought','flood','climate','hurricane']],
+  ['Intervening obstacles and intervening opportunities',['obstacle','opportunit']]]},
+ {id:'malthus',title:'Malthus and his critics',points:[
+  ['Population grows geometrically (exponentially), food grows arithmetically (linearly)',['geometric','exponential','arithmetic','linear']],
+  ['Predicted famine, disease, and war would check population growth',['famine','check','starv','disease','war']],
+  ['Thomas Malthus, England, 1798',['1798','england']],
+  ['Critique: technology like the Green Revolution increased food supply',['green revolution','technolog','fertiliz']],
+  ['Critique: hunger is a distribution problem, and growth slows as countries develop',['distribut','develop','slow']],
+  ['Neo-Malthusians: overpopulation strains resources beyond food (water, energy)',['neo','water','energy','resource']],
+  ['Boserup: population pressure drives farming innovation',['boserup','innovat']]]},
+ {id:'effects',title:'Effects of migration',points:[
+  ['Sending country gains remittances',['remittance']],
+  ['Sending country suffers brain drain',['brain drain','skilled','educated']],
+  ['Sending country loses working-age people, often young men (gender imbalance, aging)',['working age','gender','young men','aging']],
+  ['Receiving country gains workers to fill jobs, economic growth',['labor','worker','job','econom']],
+  ['Receiving country gains cultural diversity and ethnic neighborhoods (enclaves)',['divers','enclave','neighborhood','cultur']],
+  ['Receiving country may see tension, nativism or xenophobia, strain on services',['tension','xenophob','nativ','strain','discrimin','racism']]]},
+ {id:'policy',title:'Population policies',points:[
+  ['Antinatalist policies discourage births',['antinatal','anti natal','discourage']],
+  ['China’s one-child policy (1979–2015) led to aging and a male-heavy sex ratio',['china','one child','sex ratio','male']],
+  ['India’s sterilization and family planning programs',['india','steril','family planning']],
+  ['Pronatalist policies encourage births',['pronatal','pro natal','encourage']],
+  ['Examples: cash payments, paid parental leave, childcare (France, Sweden, Russia, Japan, Singapore)',['france','sweden','russia','singapore','leave','benefit','childcare','payment']],
+  ['Immigration policies: quotas, guest worker programs, refugee limits',['immigra','quota','guest']],
+  ['Why: aging, shrinking workforce (pro) vs. overpopulation and resource strain (anti)',['aging','workforce','overpopul','resource']]]},
+ {id:'aging',title:'Aging populations',points:[
+  ['Rising elderly dependency ratio',['dependency']],
+  ['Fewer workers and labor shortages',['worker','labor','workforce']],
+  ['Pressure on pensions, social security, and healthcare',['pension','social security','health','medic']],
+  ['Smaller tax base',['tax']],
+  ['Schools close, less demand for youth services',['school']],
+  ['Responses: raise retirement age, allow immigration, pronatalist policies, automation',['retire','immigra','pronatal','robot','automat']],
+  ['Examples: Japan, Italy, South Korea, Germany',['japan','italy','korea','germany']]]},
+ {id:'women',title:'Women’s changing roles and fertility',points:[
+  ['More education for women lowers TFR',['educat','school']],
+  ['Women enter the workforce and delay marriage and kids',['work','job','career','delay','marr']],
+  ['Access to contraception and family planning',['contracept','birth control','family planning']],
+  ['Urbanization: kids cost more and aren’t needed as farm labor',['urban','farm','cost','city']],
+  ['Lower infant mortality means families don’t need as many births',['infant mortality','survive']],
+  ['This is the CBR drop in DTM Stage 3',['stage 3','birth rate']]]},
+ {id:'raven',title:'Ravenstein’s laws of migration',points:[
+  ['Most migrants move short distances',['short']],
+  ['Long-distance migrants usually head to big cities',['big cit','large cit','long']],
+  ['Migration often happens in steps',['step']],
+  ['Every migration flow creates a counterflow',['counter']],
+  ['Rural people migrate more than urban people',['rural']],
+  ['Young adults migrate most; families are less likely to move internationally',['young','adult','famil']],
+  ['Most migration is for economic reasons',['econom','job','money']]]},
+];
+
+const SCEN = [
+ {q:'Explain why a country in Stage 2 of the DTM grows so rapidly.',a:'Death rates fall because of better medicine, sanitation, and food supply, but birth rates stay high because cultural expectations haven’t changed yet and children are still valued as farm labor. The big gap between CBR and CDR creates a high rate of natural increase.',k:['CDR drops (medicine, sanitation, food)','CBR stays high (culture, kids as labor)','The gap = high RNI']},
+ {q:'Japan’s total fertility rate is about 1.2. Describe TWO consequences and ONE policy response.',a:'Japan’s workforce is shrinking, causing labor shortages, and its elderly dependency ratio is rising, which strains pensions and healthcare. Schools are also closing in rural areas. Responses include pronatalist incentives (cash, childcare, parental leave), more immigration or guest workers, automation, and raising the retirement age.',k:['Labor shortage / shrinking workforce','Higher elderly dependency ratio, pension and healthcare strain','A realistic policy: pronatalist incentives, immigration, automation, later retirement']},
+ {q:'Explain how China’s one-child policy affected its population structure.',a:'Fertility fell sharply, so China’s population is aging quickly and its dependency ratio is rising. A cultural preference for sons led to a male-heavy sex ratio. China relaxed the policy to two children in 2016 and three in 2021 because of these problems.',k:['Aging population, rising dependency ratio','Skewed sex ratio (more males) from son preference','Policy was later relaxed']},
+ {q:'A country has a HIGH physiological density but a LOW agricultural density. What does that tell you about it?',a:'Many people rely on a small amount of farmland, but very few people are farmers. That means farming is mechanized and efficient, so the country is probably developed and likely imports food (examples: Japan, the Netherlands, the UK).',k:['Lots of people per unit of farmland','Few farmers = mechanized farming','Likely a developed country that imports food']},
+ {q:'Use an example to explain the difference between a refugee and an internally displaced person.',a:'Both are forced migrants. During the Syrian civil war, people who crossed into Turkey, Lebanon, or Jordan became refugees because they crossed an international border. Syrians who fled their homes but stayed inside Syria are internally displaced persons.',k:['Both are forced migration','Refugee crosses an international border; IDP doesn’t','A real example (Syria, Ukraine, Sudan, etc.)']},
+ {q:'Describe ONE positive and ONE negative effect of emigration on the SENDING country.',a:'Positive: remittances bring money into the economy and support families. Negative: brain drain, where skilled workers like doctors and engineers leave. Losing young, working-age people can also leave behind an older population and a gender imbalance.',k:['Positive: remittances (or less unemployment)','Negative: brain drain or loss of working-age people','Explains WHY each matters']},
+ {q:'Many migrants from rural southern Mexico move to Mexico City before going to the U.S. Explain this using a migration concept.',a:'This is step migration: moving in stages from rural areas to a big city, then on to another country. It also fits Ravenstein’s laws. Mexico City can act as an intervening opportunity if a migrant finds work there and decides to stay.',k:['Step migration (moving in stages)','Connects to Ravenstein or intervening opportunity','Explains the reason (saving money, jobs, contacts)']},
+ {q:'Explain why rising education for women is linked to a falling total fertility rate.',a:'Educated women are more likely to work outside the home, marry later, and delay having children. They also tend to know more about and have better access to contraception and family planning, so they have fewer children overall.',k:['Women work and delay marriage/children','Better access to contraception and family planning','Result: lower TFR (DTM Stage 3)']},
+ {q:'Describe ONE limitation of the Demographic Transition Model.',a:'The DTM is based on the history of Western Europe and North America, so it may not predict what happens in other regions. Some countries get stuck in Stage 2 or 3 because of culture, religion, or poverty, and the model ignores migration completely.',k:['Based on Europe / Western history','Some countries get stuck or move at different speeds','Ignores migration, culture, or government policy']},
+ {q:'Explain how chain migration creates ethnic neighborhoods in cities.',a:'Early migrants settle in a city and then help family and friends from the same home region follow them with housing, jobs, and information. Over time, the group clusters in the same area, creating an ethnic enclave like a Chinatown or Little Italy.',k:['Migrants follow family/friends who already moved','They cluster for support (housing, jobs, language)','Creates an ethnic enclave (give an example)']},
+ {q:'Explain one argument critics use against Malthus’s theory.',a:'Malthus didn’t predict how much technology would increase food production. The Green Revolution’s fertilizers, irrigation, and high-yield seeds let food grow faster than population. Critics also argue hunger comes from unequal distribution of food, not a total shortage.',k:['Technology / Green Revolution increased food','OR: hunger is a distribution problem','OR: population growth slowed as countries developed']},
+ {q:'Qatar’s population pyramid has a huge bulge of men aged 20–40. Explain why.',a:'Qatar brings in large numbers of guest workers, mostly men from South Asia, to work in construction and the oil and gas industry. They are working-age and mostly male, so they create a bulge in the male 20–40 bars.',k:['Guest workers / labor migration','Mostly young men from South Asia','Jobs in construction, oil and gas']},
+ {q:'Explain how an environmental push factor can lead to forced migration. Give an example.',a:'Natural disasters or climate change can make a place unlivable, forcing people to leave. Examples: Hurricane Katrina displaced people from New Orleans in 2005, the Dust Bowl drove farmers out of Oklahoma in the 1930s, and rising sea levels threaten Pacific islands like Tuvalu.',k:['Disaster or climate makes the place unlivable','Movement isn’t really a choice','A specific example']},
+ {q:'Why might a developed country WANT more immigrants?',a:'Developed countries with low fertility face aging populations and labor shortages. Immigrants are often working-age, so they fill jobs, pay taxes that support pensions, and slow population decline. Germany and Canada both use immigration this way.',k:['Aging population / low fertility','Immigrants fill labor shortages','They support the tax base and pensions']},
+ {q:'Use Zelinsky\u2019s migration transition model to explain why many migrants move from Guatemala to the United States.',a:'Guatemala is at an earlier DTM stage with a young, fast-growing population and too few jobs, so Zelinsky\u2019s model predicts lots of international emigration and rural-to-urban migration. The U.S. is in Stage 4, which the model says becomes a destination for international immigrants.',k:['Sending country is at an earlier DTM stage: fast growth, few jobs','The model predicts emigration from early-stage countries','Stage 4 countries like the U.S. receive immigrants']},
+];
+
+/* ---------- tabs ---------- */
+const TABS=['terms','blurt','scen','num'];
+function showTab(t){
+  TABS.forEach(x=>{ $('#pane-'+x).hidden = x!==t; $('#tab-'+x).setAttribute('aria-selected', x===t); });
+  store.set('tab',t);
+}
+document.querySelectorAll('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+function setPressed(ids, on){ ids.forEach(id=>$(id).setAttribute('aria-pressed', id===on)); }
+
+/* ---------- TERM RECALL ---------- */
+const T = {dir:'d2t', deck:'all', queue:[], cur:null, total:0, first:0, missed:new Set(), state:'ask', missedNow:false, requeue:false, note:''};
+function missMap(){ return store.get('miss',{}); }
+function bumpMiss(t,delta){ const m=missMap(); m[t]=Math.max(0,(m[t]||0)+delta); store.set('miss',m); }
+function buildDeck(only){
+  let idx = only ? [...only] : TERMS.map((_,i)=>i); T.note='';
+  if(!only && T.deck==='weak'){
+    const m=missMap(); const w=idx.filter(i=>(m[TERMS[i].t]||0)>0);
+    if(w.length){ idx=w; } else { T.note='No weak terms yet. Here’s the full deck; anything you miss will show up under My weak terms.'; }
+  }
+  T.queue=shuffle(idx); T.total=idx.length; T.first=0; T.missed=new Set(); nextTerm();
+}
+function nextTerm(){
+  if(T.requeue && T.cur!=null){ T.queue.splice(Math.min(3,T.queue.length),0,T.cur); }
+  T.requeue=false;
+  if(!T.queue.length){ T.cur=null; renderTerm(); return; }
+  T.cur=T.queue.shift(); T.state='ask'; T.missedNow=false; renderTerm();
+}
+function termMiss(){
+  if(!T.missedNow){ T.missedNow=true; T.missed.add(T.cur); bumpMiss(TERMS[T.cur].t,1); score(false); }
+  T.requeue=true;
+}
+function termRight(){
+  if(!T.missedNow){ T.first++; score(true); bumpMiss(TERMS[T.cur].t,-1); }
+  T.state='right';
+}
+function renderTerm(){
+  const el=$('#term-card');
+  if(T.cur==null){
+    const pct = T.total? Math.round(T.first/T.total*100):0;
+    const missed=[...T.missed];
+    el.innerHTML=`<div class="card">
+      <p class="label">Deck cleared</p>
+      <p class="big">${pct}%</p>
+      <p class="tip">${T.first} of ${T.total} recalled on the first try.</p>
+      ${missed.length?`<p class="label" style="color:var(--bad)">Needed a second try</p><div class="missed-list">${missed.map(i=>`<span>${esc(TERMS[i].t)}</span>`).join('')}</div>`:''}
+      <div class="row">${missed.length?`<button class="btn primary" id="t-redo">Drill these ${missed.length} again</button>`:''}<button class="btn" id="t-restart">Start the full deck over</button></div>
+    </div>`;
+    if(missed.length) $('#t-redo').onclick=()=>buildDeck(missed);
+    $('#t-restart').onclick=()=>buildDeck();
+    return;
+  }
+  const c=TERMS[T.cur], left=T.queue.length+1;
+  const head=`<div class="row" style="justify-content:space-between"><p class="label">${T.dir==='d2t'?'Definition':'Term'}</p><span class="count">${left} left · ${T.first} first-try</span></div>`;
+  const note = T.note?`<p class="tip">${esc(T.note)}</p>`:'';
+  if(T.dir==='d2t'){
+    let fb='', actions='';
+    if(T.state==='ask'){
+      actions=`<button class="btn primary" id="t-check">Check</button><button class="btn ghost" id="t-reveal">I don’t know</button><span class="kbd">Enter to check</span>`;
+    } else if(T.state==='right'){
+      fb=`<div class="fb ok"><strong>${T.missedNow?'Counted as correct.':'Got it.'}</strong><p class="answer">${esc(c.t)}</p></div>`;
+      actions=`<button class="btn primary" id="t-next">Next card</button><span class="kbd">Enter for next</span>`;
+    } else {
+      fb=`<div class="fb no"><strong>${T.state==='reveal'?'Here’s the answer. It’ll come back in a few cards.':'Not quite. This one will come back in a few cards.'}</strong><p class="answer">${esc(c.t)}</p></div>`;
+      actions=`<button class="btn primary" id="t-next">Next card</button>${T.state==='wrong'?'<button class="btn ghost" id="t-override">I had it right</button>':''}<span class="kbd">Enter for next</span>`;
+    }
+    el.innerHTML=`<div class="card">${head}${note}<p class="prompt">${esc(c.d)}</p>
+      <label class="visually" for="t-input" style="position:absolute;left:-9999px">Your answer</label>
+      <input type="text" id="t-input" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Type the term" ${T.state!=='ask'?'readonly':''} value="${esc(T.typed||'')}">
+      ${fb}<div class="row">${actions}</div></div>`;
+    const inp=$('#t-input');
+    if(T.state==='ask'){ T.typed=''; inp.value=''; inp.focus(); }
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); T.state==='ask'?check():nextTerm(); }});
+    const check=()=>{ const v=inp.value; if(!v.trim()){ inp.focus(); return; } T.typed=v;
+      if(matches(v,c.a)){ termRight(); } else { termMiss(); T.state='wrong'; } renderTerm(); };
+    if($('#t-check')) $('#t-check').onclick=check;
+    if($('#t-reveal')) $('#t-reveal').onclick=()=>{ T.typed=''; termMiss(); T.state='reveal'; renderTerm(); };
+    if($('#t-next')){ $('#t-next').onclick=nextTerm; if(T.state!=='ask') $('#t-next').focus(); }
+    if($('#t-override')) $('#t-override').onclick=()=>{ T.missed.delete(T.cur); bumpMiss(c.t,-2); unscoreMiss(); T.first++; T.requeue=false; T.state='right'; renderTerm(); };
+  } else {
+    let body='';
+    if(T.state==='ask'){
+      body=`<textarea id="t-explain" placeholder="Explain it in your own words. Add an example if you can."></textarea>
+        <div class="row"><button class="btn primary" id="t-show">Show the definition</button><span class="kbd">Ctrl + Enter</span></div>`;
+    } else if(T.state==='grade'){
+      body=`<div class="fb info"><strong>Definition</strong><p>${esc(c.d)}</p></div>
+        <p class="tip">Did your explanation get the main idea?</p>
+        <div class="row"><button class="btn good" id="t-got">Got it</button><button class="btn bad" id="t-miss">Missed it</button></div>`;
+    } else {
+      body=`<div class="fb ${T.missedNow?'no':'ok'}"><strong>${T.missedNow?'It’ll come back in a few cards.':'Nice.'}</strong><p>${esc(c.d)}</p></div>
+        <div class="row"><button class="btn primary" id="t-next">Next card</button></div>`;
+    }
+    el.innerHTML=`<div class="card">${head}${note}<p class="prompt term">${esc(c.t)}</p>${body}</div>`;
+    if($('#t-explain')){ const ta=$('#t-explain'); ta.focus(); ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); T.state='grade'; renderTerm(); }}); $('#t-show').onclick=()=>{ T.state='grade'; renderTerm(); }; }
+    if($('#t-got')){ $('#t-got').onclick=()=>{ termRight(); T.state='done'; renderTerm(); }; $('#t-miss').onclick=()=>{ termMiss(); T.state='done'; renderTerm(); }; }
+    if($('#t-next')){ $('#t-next').onclick=nextTerm; $('#t-next').focus(); }
+  }
+}
+$('#dir-d2t').onclick=()=>{ T.dir='d2t'; setPressed(['#dir-d2t','#dir-t2d'],'#dir-d2t'); if(T.cur!=null){ T.state='ask'; renderTerm(); } };
+$('#dir-t2d').onclick=()=>{ T.dir='t2d'; setPressed(['#dir-d2t','#dir-t2d'],'#dir-t2d'); if(T.cur!=null){ T.state='ask'; renderTerm(); } };
+$('#deck-all').onclick=()=>{ T.deck='all'; setPressed(['#deck-all','#deck-weak'],'#deck-all'); buildDeck(); };
+$('#deck-weak').onclick=()=>{ T.deck='weak'; setPressed(['#deck-all','#deck-weak'],'#deck-weak'); buildDeck(); };
+
+/* ---------- BRAIN DUMP ---------- */
+const B = {cur:BLURTS[0].id, state:'write', text:'', start:null, timer:null, checks:[]};
+function blurtBest(){ return store.get('blurt',{}); }
+function renderChips(){
+  const best=blurtBest();
+  $('#blurt-chips').innerHTML=BLURTS.map(b=>{ const s=best[b.id]; return `<button class="chip" data-id="${b.id}" aria-pressed="${b.id===B.cur}">${esc(b.title)}${s!=null?`<span class="sc">${s}/${b.points.length}</span>`:''}</button>`; }).join('');
+  document.querySelectorAll('#blurt-chips .chip').forEach(ch=>ch.onclick=()=>{ B.cur=ch.dataset.id; resetBlurt(); });
+}
+function resetBlurt(){ B.state='write'; B.text=''; B.start=null; clearInterval(B.timer); B.timer=null; renderChips(); renderBlurt(); }
+function fmtTime(ms){ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function renderBlurt(){
+  const b=BLURTS.find(x=>x.id===B.cur), el=$('#blurt-card');
+  if(B.state==='write'){
+    el.innerHTML=`<div class="card">
+      <div class="row" style="justify-content:space-between"><p class="label">Brain dump</p><span class="timer" id="b-timer">0:00</span></div>
+      <p class="prompt term">${esc(b.title)}</p>
+      <p class="tip">Write everything you remember: definitions, stages, causes, examples. Messy is fine. Aim for about 2 minutes.</p>
+      <label for="b-text" style="position:absolute;left:-9999px">Your brain dump</label>
+      <textarea id="b-text" style="min-height:190px" placeholder="Start typing. The timer starts with your first key."></textarea>
+      <div class="row"><button class="btn primary" id="b-check">Check my brain dump</button><span class="kbd">Ctrl + Enter</span></div></div>`;
+    const ta=$('#b-text'); ta.value=B.text; ta.focus();
+    ta.addEventListener('input',()=>{ B.text=ta.value; if(!B.start){ B.start=Date.now(); B.timer=setInterval(()=>{ const t=$('#b-timer'); if(t) t.textContent=fmtTime(Date.now()-B.start); },500); }});
+    ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); $('#b-check').click(); }});
+    $('#b-check').onclick=()=>{ if(!B.text.trim()){ ta.focus(); return; } clearInterval(B.timer);
+      const low=B.text.toLowerCase(); B.checks=b.points.map(p=>p[1].some(k=>low.includes(k))); B.auto=[...B.checks]; B.state='check'; renderBlurt(); };
+  } else {
+    const got=B.checks.filter(Boolean).length, n=b.points.length;
+    el.innerHTML=`<div class="card">
+      <div class="row" style="justify-content:space-between"><p class="label">${esc(b.title)}</p><span class="timer">${B.start?fmtTime(Date.now()-B.start):''}</span></div>
+      <div class="row" style="align-items:baseline;gap:12px"><p class="big" id="b-score">${got}/${n}</p><p class="tip">Check off every point your brain dump covered. Green tags are a guess from keywords, so fix them if they’re wrong.</p></div>
+      <ul class="check">${b.points.map((p,i)=>`<li><label class="${B.checks[i]?'on':''}"><input type="checkbox" id="bp-${i}" data-i="${i}" ${B.checks[i]?'checked':''}><span>${esc(p[0])}</span>${B.auto[i]?'<span class="auto">found</span>':''}</label></li>`).join('')}</ul>
+      <div class="fb info"><strong>What you wrote</strong><p style="white-space:pre-wrap">${esc(B.text)}</p></div>
+      <div class="row"><button class="btn primary" id="b-save">Save score &amp; next topic</button><button class="btn" id="b-again">Try this topic again</button></div></div>`;
+    document.querySelectorAll('ul.check input').forEach(cb=>cb.onchange=()=>{ const i=+cb.dataset.i; B.checks[i]=cb.checked; cb.parentElement.classList.toggle('on',cb.checked); $('#b-score').textContent=B.checks.filter(Boolean).length+'/'+n; });
+    $('#b-again').onclick=resetBlurt;
+    $('#b-save').onclick=()=>{ const g=B.checks.filter(Boolean).length; const best=blurtBest(); best[b.id]=Math.max(best[b.id]||0,g); store.set('blurt',best);
+      for(let i=0;i<n;i++) score(B.checks[i]);
+      const order=BLURTS.map(x=>x.id); const nb=blurtBest(); const next=order.find(id=>id!==b.id&&nb[id]==null) || order[(order.indexOf(b.id)+1)%order.length];
+      B.cur=next; resetBlurt(); };
+  }
+}
+
+/* ---------- EXPLAIN IT ---------- */
+const S = {queue:shuffle(SCEN.map((_,i)=>i)), cur:null, state:'write', text:'', done:0, total:SCEN.length};
+function nextScen(requeue){
+  if(requeue!=null){ S.queue.splice(Math.min(4,S.queue.length),0,S.cur); }
+  S.cur=S.queue.length?S.queue.shift():null; S.state='write'; S.text=''; renderScen();
+}
+function renderScen(){
+  const el=$('#scen-card');
+  $('#scen-count').textContent = `${S.done} of ${S.total} nailed · ${S.queue.length+(S.cur!=null?1:0)} in the stack`;
+  if(S.cur==null){
+    el.innerHTML=`<div class="card"><p class="label">All done</p><p class="prompt">You’ve given a full-credit answer to every question.</p><div class="row"><button class="btn primary" id="s-restart">Shuffle and go again</button></div></div>`;
+    $('#s-restart').onclick=()=>{ S.queue=shuffle(SCEN.map((_,i)=>i)); S.done=0; nextScen(); }; return;
+  }
+  const s=SCEN[S.cur];
+  if(S.state==='write'){
+    el.innerHTML=`<div class="card"><p class="label">Question</p><p class="prompt">${esc(s.q)}</p>
+      <label for="s-text" style="position:absolute;left:-9999px">Your answer</label>
+      <textarea id="s-text" placeholder="Answer in 2–4 sentences. Use the vocab and give a specific example."></textarea>
+      <div class="row"><button class="btn primary" id="s-reveal">Compare with a model answer</button><button class="btn ghost" id="s-skip">Skip for now</button><span class="kbd">Ctrl + Enter</span></div></div>`;
+    const ta=$('#s-text'); ta.focus();
+    ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); $('#s-reveal').click(); }});
+    $('#s-reveal').onclick=()=>{ S.text=ta.value; if(!S.text.trim()){ ta.focus(); return; } S.state='grade'; renderScen(); };
+    $('#s-skip').onclick=()=>nextScen(true);
+  } else {
+    el.innerHTML=`<div class="card"><p class="label">Question</p><p class="prompt">${esc(s.q)}</p>
+      <div class="fb" style="background:var(--sunk)"><strong style="color:var(--muted)">Your answer</strong><p style="white-space:pre-wrap">${esc(S.text)}</p></div>
+      <div class="fb info"><strong>A full-credit answer hits these</strong><ul class="keys">${s.k.map(k=>`<li>${esc(k)}</li>`).join('')}</ul></div>
+      <div class="fb" style="background:var(--warm-soft)"><strong style="color:var(--warm)">Model answer</strong><p>${esc(s.a)}</p></div>
+      <p class="tip">How did you do? Be honest. Anything less than full credit comes back later.</p>
+      <div class="row"><button class="btn good" id="s-full">Full credit</button><button class="btn mid" id="s-part">Partly</button><button class="btn bad" id="s-miss">Missed it</button></div></div>`;
+    $('#s-full').onclick=()=>{ score(true); S.done++; nextScen(); };
+    $('#s-part').onclick=()=>{ score(false); nextScen(true); };
+    $('#s-miss').onclick=()=>{ score(false); nextScen(true); };
+  }
+}
+
+/* ---------- MODELS ---------- */
+const DTM = [
+ {n:1,name:'High stationary',cbr:'High',cdr:'High',nir:'Very low (near zero)',why:'Little medicine, poor sanitation, and an unreliable food supply. Mostly hunter-gatherer or subsistence farming societies.',pyr:'Wide base, sides narrow quickly',ex:'No country today (the pre-1750 world, isolated tribes)'},
+ {n:2,name:'Early expanding',cbr:'High',cdr:'Falling fast',nir:'Very high',why:'The Industrial Revolution in Europe (1750s on) or the medical revolution in developing countries after 1950: vaccines, clean water, sanitation, better food. Birth rates stay high because culture and the need for farm labor haven’t changed yet.',pyr:'Very wide base, concave sides (classic triangle)',ex:'Niger, Chad, Somalia, Afghanistan'},
+ {n:3,name:'Late expanding',cbr:'Falling',cdr:'Low, still falling',nir:'Moderate, slowing',why:'Urbanization makes children an expense instead of farm labor. Women get educated and join the workforce, contraception spreads, and lower infant mortality means fewer births are needed.',pyr:'Base starts to narrow, sides straighten',ex:'India, Egypt, Kenya'},
+ {n:4,name:'Low stationary',cbr:'Low',cdr:'Low',nir:'Low or near zero',why:'TFR near or below replacement. Raising kids is expensive, women have careers, and families choose to have fewer children.',pyr:'Column or rectangle with straight sides',ex:'United States, United Kingdom, France'},
+ {n:5,name:'Declining',cbr:'Very low',cdr:'Low, rising slightly',nir:'Negative',why:'TFR is far below replacement and the elderly population is large, so deaths outnumber births. This stage was added to the model later.',pyr:'Inverted: narrower at the base than the middle',ex:'Japan, Italy, South Korea'},
+];
+const ETM = [
+ {n:1,name:'Pestilence and famine',causes:'Infectious and parasitic diseases, famine, animal attacks, accidents',ex:'The Black Plague in 1300s Europe',dtm:'DTM Stage 1',note:'Life expectancy is very low, around 30.'},
+ {n:2,name:'Receding pandemics',causes:'Pandemics decline as sanitation, nutrition, and medicine improve',ex:'Cholera falls in 1800s cities after John Snow traced it to a contaminated water pump',dtm:'DTM Stage 2',note:'The death rate drops quickly and life expectancy rises.'},
+ {n:3,name:'Degenerative and human-created diseases',causes:'Heart disease, cancer, stroke: diseases of aging and lifestyle',ex:'Most of the U.S. and Europe in the mid-1900s',dtm:'DTM Stage 3',note:'People now live long enough to die of chronic diseases.'},
+ {n:4,name:'Delayed degenerative diseases',causes:'Heart disease and cancer still lead, but medicine delays them to older ages',ex:'Bypass surgery, chemotherapy, and healthier diets push life expectancy past 80',dtm:'DTM Stage 4',note:'Same leading causes as Stage 3, just later in life.'},
+ {n:5,name:'Reemergence of infectious and parasitic diseases',causes:'Infectious diseases come back through antibiotic resistance, poverty, and global travel',ex:'Drug-resistant TB, Ebola, COVID-19',dtm:'A possible stage that geographers debate',note:'Not everyone agrees this stage exists.'},
+];
+const ZEL = [
+ {n:'1',dtm:'DTM Stage 1',mig:'Very little migration. Mostly local, daily, or seasonal movement, like nomadic herding.'},
+ {n:'2',dtm:'DTM Stage 2',mig:'Lots of international emigration plus internal rural-to-urban migration, because fast population growth leaves too little farmland and too few jobs.'},
+ {n:'3 & 4',dtm:'DTM Stages 3 and 4',mig:'The country becomes a destination for international immigrants from Stage 2 countries. Internal migration shifts to urban-to-suburban.'},
+];
+const OTHER = [
+ {name:'Malthusian theory',who:'Thomas Malthus, England, 1798',idea:'Population grows geometrically (2, 4, 8, 16) but food grows arithmetically (1, 2, 3, 4), so population will outrun food. Famine, disease, and war act as “checks” on growth.',key:'Critics: the Green Revolution boosted food supply, and hunger is mostly a distribution problem.'},
+ {name:'Neo-Malthusians',who:'Paul Ehrlich, The Population Bomb, 1968',idea:'Overpopulation strains much more than food: water, energy, land, and the environment, especially in fast-growing developing countries.',key:'Updates Malthus for the modern world.'},
+ {name:'Boserup’s theory',who:'Ester Boserup, 1965',idea:'Population pressure pushes farmers to farm more intensively and invent better methods, so food supply rises to meet demand.',key:'The opposite of Malthus: population growth drives innovation.'},
+ {name:'Lee’s push-pull model',who:'Everett Lee, 1966',idea:'People decide whether to migrate by weighing push factors at the origin, pull factors at the destination, intervening obstacles in between, and personal factors.',key:'This is where push factor, pull factor, and intervening obstacle come from.'},
+ {name:'Ravenstein’s laws',who:'Ernst Ravenstein, 1880s, British census data',idea:'Most migrants move short distances. Long-distance migrants head to big cities. Migration happens in steps. Every flow has a counterflow. Rural people migrate more than urban people. Most migration is economic.',key:'Also: young adults migrate most, and families are less likely to move internationally.'},
+ {name:'Gravity model',who:'Based on Newton’s law of gravity',idea:'Interaction between two places = (population A × population B) ÷ distance. Bigger places that are closer together have more migration, trade, and travel.',key:'Connected to distance decay.'},
+];
+
+/* keyword grading: every group needs one match; keys of 3 letters or fewer must be whole words */
+function kwMatch(input, groups){
+  const s=' '+input.toLowerCase().replace(/[.’']/g,'').replace(/[^a-z0-9 \-]+/g,' ')+' ';
+  return groups.every(g=>g.some(k=>{ const body=k.replace(/[-\s]/g,'[- ]?'); return new RegExp('(^|[^a-z])'+body+(k.length<=3?'([^a-z]|$)':'')).test(s); }));
+}
+
+const CTRY = {
+ 2:[['niger','chad','mali','somalia','afghanistan','congo','drc','angola','burundi','uganda','nigeria','south sudan','yemen','mozambique','burkina','central african','guinea','tanzania','sudan','zambia','malawi']],
+ 3:[['india','egypt','kenya','pakistan','bangladesh','philippines','indonesia','south africa','mexico','peru','guatemala','honduras','bolivia','ghana','ethiopia','nepal']],
+ 4:[['united states','usa','us','america','uk','united kingdom','britain','england','france','canada','australia','sweden','norway','netherlands','new zealand','belgium','denmark','ireland','china','brazil','chile','argentina']],
+ 5:[['japan','italy','south korea','korea','germany','spain','greece','portugal','poland','hungary','bulgaria','croatia','serbia','ukraine','russia','latvia','lithuania','taiwan','romania']]
+};
+const HIGH=[['high']], FALL=[['fall','drop','declin','decreas','lower','going down','shrink']], LOW=[['low']];
+const DTMK = {
+ cbr:{1:HIGH,2:HIGH,3:FALL,4:LOW,5:[['very low','extremely low','lowest','below replacement','really low','super low']]},
+ cdr:{1:HIGH,2:FALL,3:[['low','fall','drop','declin','decreas']],4:LOW,5:[['rising','rises','rise','increas','going up','low']]},
+ nir:{1:[['low','zero','none','stable','little','slow','stationary','no growth']],2:[['high','rapid','fast','explo','boom']],3:[['moderate','slow','declin','decreas','fall','medium','drop']],4:[['low','zero','stable','stationary','slow','little','no growth']],5:[['negative','declin','shrink','decreas','below zero','loss','fall','drop']]},
+ pyr:{2:[['wide','broad','triangle','big base','pyramid']],4:[['column','rectangle','straight','box','even','vertical']],5:[['invert','narrow base','upside','top heavy','narrower','small base','wider at the top','urn','skinny base']]}
+};
+const sumDTM = s => `Stage ${s.n} (${s.name}): CBR ${s.cbr.toLowerCase()} · CDR ${s.cdr.toLowerCase()} · growth ${s.nir.toLowerCase()}`;
+const FILL = [];
+DTM.forEach(s=>{
+  FILL.push({model:'DTM',q:`DTM Stage ${s.n}: what is the crude birth rate doing?`,groups:DTMK.cbr[s.n],sol:`<b>${esc(s.cbr)}</b><br>${esc(sumDTM(s))}`});
+  FILL.push({model:'DTM',q:`DTM Stage ${s.n}: what is the crude death rate doing?`,groups:DTMK.cdr[s.n],sol:`<b>${esc(s.cdr)}</b><br>${esc(sumDTM(s))}`});
+  FILL.push({model:'DTM',q:`DTM Stage ${s.n}: how fast is the population growing?`,groups:DTMK.nir[s.n],sol:`<b>${esc(s.nir)}</b><br>${esc(sumDTM(s))}`});
+  if(CTRY[s.n]) FILL.push({model:'DTM',q:`Name a country in DTM Stage ${s.n} today.`,groups:CTRY[s.n],sol:`Examples: <b>${esc(s.ex)}</b>`});
+  if(DTMK.pyr[s.n]) FILL.push({model:'DTM',q:`DTM Stage ${s.n}: what shape is the population pyramid?`,groups:DTMK.pyr[s.n],sol:`<b>${esc(s.pyr)}</b>`});
+});
+FILL.push({model:'DTM',q:'What causes the death rate to drop in DTM Stage 2?',groups:[['medic','sanitat','vaccin','clean water','food','hygiene','health','industrial']],sol:`<b>Better medicine, vaccines, sanitation, clean water, and food supply</b><br>${esc(DTM[1].why)}`});
+FILL.push({model:'DTM',q:'What causes the birth rate to drop in DTM Stage 3?',groups:[['urban','women','contracep','educat','birth control','city','cities','family planning','infant']],sol:`<b>Urbanization, women’s education and jobs, contraception</b><br>${esc(DTM[2].why)}`});
+FILL.push({model:'DTM',q:'Why do birth rates stay high in DTM Stage 2 even though death rates fall?',groups:[['cultur','tradition','farm','labor','religio','norm','habit','used to']],sol:'<b>Culture and tradition change slowly, and children are still needed as farm labor.</b>'});
+const ETMK = {
+ name:{1:[['pestilence','famine']],2:[['receding','pandemic']],3:[['degenerative','human created','man made']],4:[['delayed']],5:[['reemerg','re emerg','return','resurg','comeback','come back']]},
+ cause:{1:[['infect','parasit','famine','plague','pestilence','starv']],2:[['sanitat','pandemic','nutrition','medic','cholera','clean water']],3:[['heart','cancer','stroke','chronic','degenerative']],4:[['heart','cancer','stroke','delay','chronic','degenerative']],5:[['infect','parasit','resist','virus','covid','ebola','tuberc']]}
+};
+ETM.forEach(s=>{
+  FILL.push({model:'ETM',q:`What is ETM Stage ${s.n} called?`,groups:ETMK.name[s.n],sol:`<b>${esc(s.name)}</b><br>${esc(s.causes)}`});
+  FILL.push({model:'ETM',q:`ETM Stage ${s.n} (${s.name}): what are the main causes of death, or what’s changing?`,groups:ETMK.cause[s.n],sol:`<b>${esc(s.causes)}</b><br>Example: ${esc(s.ex)}`});
+});
+FILL.push({model:'Zelinsky',q:'Zelinsky Stage 1: what is migration like?',groups:[['little','local','seasonal','limited','few','not much','minimal','nomad','none']],sol:`<b>${esc(ZEL[0].mig)}</b>`});
+FILL.push({model:'Zelinsky',q:'Zelinsky Stage 2: what two kinds of migration are most common?',groups:[['emigra','international','abroad','other countr','leave'],['rural','urban','city','cities']],sol:`<b>International emigration and internal rural-to-urban migration</b><br>${esc(ZEL[1].mig)}`});
+FILL.push({model:'Zelinsky',q:'Zelinsky Stages 3 and 4: are these countries mostly sending or receiving international migrants?',groups:[['receiv','immigra','destination','arriv','coming in','incoming','taking in']],sol:`<b>Receiving.</b> ${esc(ZEL[2].mig)}`});
+FILL.push({model:'Zelinsky',q:'Zelinsky Stages 3 and 4: internal migration mostly goes from where to where?',groups:[['suburb']],sol:'<b>From cities to suburbs</b>'});
+FILL.push({model:'Malthus',q:'According to Malthus, how does food supply grow?',groups:[['arithmetic','linear','1 2 3','slow']],sol:'<b>Arithmetically (1, 2, 3, 4)</b>, while population grows geometrically (2, 4, 8, 16).'});
+FILL.push({model:'Malthus',q:'According to Malthus, how does population grow?',groups:[['geometric','exponential','2 4 8','doubl']],sol:'<b>Geometrically (2, 4, 8, 16)</b>, while food grows arithmetically (1, 2, 3, 4).'});
+FILL.push({model:'Gravity model',q:'In the gravity model, which two things predict how much two places interact?',groups:[['population','size','pop','big'],['distance','far','close','apart']],sol:'<b>Population size and distance.</b> Interaction = (pop A × pop B) ÷ distance.'});
+FILL.push({model:'Lee’s model',q:'Lee’s push-pull model has four parts. Name the one that sits between the origin and the destination.',groups:[['obstacle']],sol:'<b>Intervening obstacles</b>. The other parts are push factors, pull factors, and personal factors.'});
+
+const STAGEQ = [
+ ['CBR 44, CDR 8. The population is growing very fast. (Example: Niger)',2,'DTM'],
+ ['CBR 9, CDR 11. The population is shrinking.',5,'DTM'],
+ ['CBR 11, CDR 9. Both rates are low and growth is slow.',4,'DTM'],
+ ['CBR 24, CDR 7. Birth rates are falling as cities grow.',3,'DTM'],
+ ['Both CBR and CDR are very high. No country is in this stage today.',1,'DTM'],
+ ['The population pyramid has straight, column-like sides.',4,'DTM'],
+ ['The population pyramid has a very wide base and a narrow top.',2,'DTM'],
+ ['The pyramid is narrower at the base than in the middle.',5,'DTM'],
+ ['The pyramid’s base is starting to narrow and its sides are straightening.',3,'DTM'],
+ ['England in the early 1800s, as the Industrial Revolution cuts death rates.',2,'DTM'],
+ ['Japan or Italy today.',5,'DTM'],
+ ['India or Egypt today: birth rates are dropping and growth is slowing.',3,'DTM'],
+ ['Vaccines and clean water have arrived, but families still have six or seven children.',2,'DTM'],
+ ['Women are joining the workforce and families are moving to cities, so birth rates start to fall.',3,'DTM'],
+ ['TFR is about 2.1 and the population barely grows.',4,'DTM'],
+ ['Deaths outnumber births, and the government pays families to have kids.',5,'DTM'],
+ ['The stage where population grows the fastest.',2,'DTM'],
+ ['The stage where growth starts to slow down for the first time.',3,'DTM'],
+ ['A hunter-gatherer society whose population barely grows.',1,'DTM'],
+ ['The stage that wasn’t in the original model and was added later.',5,'DTM'],
+ ['Heart disease and cancer are now the leading causes of death.',3,'ETM'],
+ ['Plague and famine cause most deaths.',1,'ETM'],
+ ['Better sanitation is cutting deaths from cholera and other pandemics.',2,'ETM'],
+ ['Medical advances delay heart disease and cancer, so many people live into their 80s.',4,'ETM'],
+ ['Antibiotic-resistant infections and new viruses are spreading.',5,'ETM'],
+ ['The Black Death sweeps through Europe in the 1300s.',1,'ETM'],
+ ['John Snow traces a cholera outbreak to a contaminated water pump.',2,'ETM'],
+ ['COVID-19 and drug-resistant tuberculosis spread around the world.',5,'ETM'],
+ ['Bypass surgery and chemotherapy push life expectancy past 80.',4,'ETM'],
+ ['Life expectancy is around 30 years.',1,'ETM'],
+ ['People live long enough that chronic diseases of aging become the main killers.',3,'ETM'],
+ ['Very little migration. Most movement is local or seasonal.',1,'Zelinsky'],
+ ['Many people emigrate abroad and move from farms to cities.',2,'Zelinsky'],
+ ['The country attracts immigrants, and people move from cities to suburbs.',3.5,'Zelinsky'],
+ ['ETM Stage 2 lines up with which DTM stage?',2,'Linking models'],
+ ['ETM Stage 1 lines up with which DTM stage?',1,'Linking models'],
+ ['Zelinsky Stage 2 happens in countries in which DTM stage?',2,'Linking models'],
+ ['ETM Stage 4 lines up with which DTM stage?',4,'Linking models'],
+];
+
+const MODELS = {
+ dtm:{name:'Demographic Transition Model',core:v=>/demograph|\bdtm\b/.test(v)},
+ etm:{name:'Epidemiological Transition Model',core:v=>/epidemiolog|\betm\b/.test(v)},
+ zel:{name:'Zelinsky’s migration transition model',core:v=>/zelinsk|migration transition|mobility transition/.test(v)},
+ malthus:{name:'Malthusian theory',core:v=>/malthus/.test(v)&&!/neo/.test(v)},
+ neo:{name:'Neo-Malthusians',core:v=>/neo.?malth|ehrlich/.test(v)},
+ boserup:{name:'Boserup’s theory',core:v=>/boserup/.test(v)},
+ lee:{name:'Lee’s push-pull model',core:v=>/\blee\b|\blees\b|lee.s|push.?pull/.test(v)},
+ raven:{name:'Ravenstein’s laws',core:v=>/ravenst/.test(v)},
+ gravity:{name:'Gravity model',core:v=>/gravity/.test(v)},
+};
+const WHICH = [
+ ['Food supply grows arithmetically while population grows geometrically.','malthus'],
+ ['Critics point to the Green Revolution to argue this theory was wrong.','malthus'],
+ ['Population pressure pushes farmers to invent more productive ways to farm.','boserup'],
+ ['Argues population growth can be good because it drives innovation.','boserup'],
+ ['Predicts that two big cities close together will have lots of migration between them.','gravity'],
+ ['Uses population size and distance to predict interaction between places.','gravity'],
+ ['Most migrants travel short distances, and every flow creates a counterflow.','raven'],
+ ['Migrants often move in steps, and long-distance migrants head to big cities.','raven'],
+ ['Built from British census data in the 1880s.','raven'],
+ ['Shows the leading causes of death shifting from infectious to degenerative disease.','etm'],
+ ['Includes a possible stage where antibiotic resistance brings infectious disease back.','etm'],
+ ['Shows how birth and death rates change as a country industrializes.','dtm'],
+ ['Its newest stage has a birth rate lower than its death rate.','dtm'],
+ ['Based on Europe’s history, so critics say it may not fit developing countries.','dtm'],
+ ['Links each stage of the DTM to the type of migration that’s most common there.','zel'],
+ ['Says Stage 2 countries send emigrants abroad and Stage 3–4 countries receive them.','zel'],
+ ['Explains migration with push factors at the origin, pull factors at the destination, intervening obstacles, and personal factors.','lee'],
+ ['Argues overpopulation will strain water, energy, and other resources. Paul Ehrlich’s The Population Bomb is the classic example.','neo'],
+];
+
+const PROF = [
+ ...DTM.map(s=>({grp:'dtm',title:`DTM Stage ${s.n}`,ask:'Birth rate, death rate, growth, why it happens, pyramid shape, and an example country.',rows:[['Name',s.name],['Birth rate (CBR)',s.cbr],['Death rate (CDR)',s.cdr],['Growth',s.nir],['Why',s.why],['Pyramid',s.pyr],['Examples',s.ex]]})),
+ ...ETM.map(s=>({grp:'etm',title:`ETM Stage ${s.n}`,ask:'The stage’s name, leading causes of death, an example, and which DTM stage it matches.',rows:[['Name',s.name],['Leading causes',s.causes],['Example',s.ex],['Lines up with',s.dtm],['Also',s.note]]})),
+ ...ZEL.map(s=>({grp:'zel',title:`Zelinsky Stage ${s.n}`,ask:'Which DTM stage this matches and what kind of migration is most common.',rows:[['Lines up with',s.dtm],['Main migration',s.mig]]})),
+ ...OTHER.map(m=>({grp:'other',title:m.name,ask:'Who came up with it, the main idea, and a key criticism or connection.',rows:[['Who / when',m.who],['Main idea',m.idea],['Remember',m.key]]})),
+];
+
+let sheetTab='dtm';
+const DTM_SVG = `<div class="dtm-chart"><svg viewBox="0 0 420 196" role="img" aria-label="Demographic Transition Model graph: birth rate stays high through Stage 2 then falls; death rate falls in Stage 2; the gap between them is population growth">
+  <text class="lbl" x="30" y="11">per 1,000 people</text>
+  <line class="ax" x1="30" y1="170" x2="410" y2="170"/>
+  ${[106,182,258,334].map(x=>`<line class="div" x1="${x}" y1="18" x2="${x}" y2="170"/>`).join('')}
+  <polygon class="gap" points="30,50 106,50 182,56 258,122 334,134 410,146 410,137 334,143 258,143 182,128 106,59 85,71 64,52 47,68 30,56"/>
+  <polyline class="cbr" points="30,50 106,50 182,56 258,122 334,134 410,146"/>
+  <polyline class="cdr" points="30,56 47,68 64,52 85,71 106,59 182,128 258,143 334,143 410,137"/>
+  <text class="lcbr" x="34" y="40">Birth rate</text>
+  <text class="lcdr" x="214" y="162">Death rate</text>
+  <text class="lgap" x="175" y="96" text-anchor="middle">Growth</text>
+  ${[68,144,220,296,372].map((x,i)=>`<text class="lbl" x="${x}" y="188" text-anchor="middle">Stage ${i+1}</text>`).join('')}
+</svg></div>`;
+function sheetHTML(){
+  const tabs=[['dtm','DTM'],['etm','ETM'],['zel','Zelinsky'],['other','Other models']];
+  const dl=pairs=>`<dl>${pairs.map(([k,v])=>`<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('')}</dl>`;
+  let body='';
+  if(sheetTab==='dtm') body=DTM_SVG+`<div class="stages">${DTM.map(s=>`<div class="st"><div class="st-n">${s.n}</div><div><h4>${esc(s.name)}</h4>
+    <div class="pills"><span><i>CBR</i>${esc(s.cbr)}</span><span><i>CDR</i>${esc(s.cdr)}</span><span><i>Growth</i>${esc(s.nir)}</span></div>
+    <p>${esc(s.why)}</p>${dl([['Pyramid',s.pyr],['Examples',s.ex]])}</div></div>`).join('')}</div>`;
+  if(sheetTab==='etm') body=`<div class="stages">${ETM.map(s=>`<div class="st"><div class="st-n">${s.n}</div><div><h4>${esc(s.name)}</h4>
+    <div class="pills"><span><i>Matches</i>${esc(s.dtm)}</span></div>
+    <p>${esc(s.causes)}. ${esc(s.note)}</p>${dl([['Example',s.ex]])}</div></div>`).join('')}</div>`;
+  if(sheetTab==='zel') body=`<div class="stages">${ZEL.map(s=>`<div class="st"><div class="st-n${s.n.length>1?' sm':''}">${esc(s.n)}</div><div><h4>${esc(s.dtm)}</h4><p>${esc(s.mig)}</p></div></div>`).join('')}</div>`;
+  if(sheetTab==='other') body=`<div class="stages">${OTHER.map(m=>`<div class="st nonum"><div><h4>${esc(m.name)}</h4><p class="who">${esc(m.who)}</p><p>${esc(m.idea)}</p>${dl([['Remember',m.key]])}</div></div>`).join('')}</div>`;
+  return `<div class="seg" role="group" aria-label="Model">${tabs.map(([t,l])=>`<button data-st="${t}" aria-pressed="${sheetTab===t}">${l}</button>`).join('')}</div>${body}`;
+}
+function renderSheet(){ const el=$('#sheet-body'); el.innerHTML=sheetHTML(); el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{ sheetTab=b.dataset.st; renderSheet(); }); }
+
+const fmt=(x,d=1)=>Number(x.toFixed(d)).toLocaleString('en-US',{maximumFractionDigits:d});
+const GEN = {
+  rni(){ const cbr=rand(10,45), cdr=rand(4,Math.min(15,cbr-2)); const r=(cbr-cdr)/10;
+    return {label:'Rate of natural increase',q:`A country has a crude birth rate of ${cbr} and a crude death rate of ${cdr}. What is its rate of natural increase?`,unit:'%',ans:r,tol:0.051,
+      sol:`RNI = (CBR − CDR) ÷ 10<br>= (${cbr} − ${cdr}) ÷ 10 = <b>${fmt(r)}%</b>`}; },
+  doubling(){ const r=pick([0.5,0.7,1,1.4,1.75,2,2.5,2.8,3.5]); const d=70/r;
+    return {label:'Doubling time',q:`A country’s rate of natural increase is ${r}%. About how many years will it take its population to double?`,unit:'years',ans:d,tol:Math.max(1,d*0.03),
+      sol:`Rule of 70: doubling time ≈ 70 ÷ RNI<br>= 70 ÷ ${r} ≈ <b>${fmt(d)} years</b>`}; },
+  dep(){ const y=rand(8,45), o=rand(3,30), w=rand(40,120); const d=(y+o)/w*100;
+    return {label:'Dependency ratio',q:`A country has ${y} million people aged 0–14, ${w} million aged 15–64, and ${o} million aged 65+. What is its dependency ratio?`,unit:'dependents per 100 workers',ans:d,tol:1.05,
+      sol:`Dependency ratio = (0–14 + 65+) ÷ 15–64 × 100<br>= (${y} + ${o}) ÷ ${w} × 100 = <b>${fmt(d)}</b>`}; },
+  density(){ const pop=rand(12,150), area=rand(100,1500)*1000, ar=rand(3,40); const arable=Math.round(area*ar/100/100)*100; const phys=Math.random()<0.5;
+    const val=phys? pop*1e6/arable : pop*1e6/area;
+    return {label:phys?'Physiological density':'Arithmetic density',q:`A country has ${pop} million people, ${area.toLocaleString('en-US')} km² of total land, and ${arable.toLocaleString('en-US')} km² of arable land. What is its ${phys?'physiological':'arithmetic'} density?`,unit:'people per km²',ans:val,tol:Math.max(1.5,val*0.02),
+      sol:`${phys?'Physiological':'Arithmetic'} density = population ÷ ${phys?'arable':'total'} land<br>= ${(pop*1e6).toLocaleString('en-US')} ÷ ${(phys?arable:area).toLocaleString('en-US')} ≈ <b>${fmt(val,0)} people/km²</b>`}; },
+  sex(){ const f=rand(200,800)/10, m=Math.round(f*(0.88+Math.random()*0.26)*10)/10; const r=m/f*100;
+    return {label:'Sex ratio',q:`A country has ${m} million males and ${f} million females. What is its sex ratio?`,unit:'males per 100 females',ans:r,tol:0.55,
+      sol:`Sex ratio = males ÷ females × 100<br>= ${m} ÷ ${f} × 100 = <b>${fmt(r)}</b>`}; },
+};
+const MAKE = {
+  fill(){ const f=pick(FILL); return {label:'Fill the table',pre:f.model,q:f.q,kind:'text',ph:'Type your answer',check:v=>kwMatch(v,f.groups),sol:f.sol}; },
+  stage(){ const [q,a,m]=pick(STAGEQ); const tol=a===3.5?0.5:0; const full={DTM:'Demographic Transition Model',ETM:'Epidemiological Transition Model',Zelinsky:'Zelinsky’s model'}[m]||m;
+    return {label:'Name the stage',pre:full,q,kind:'num',unit:'stage (1–5)',ph:'Stage #',check:v=>Math.abs(v-a)<=tol+1e-9,sol:`<b>Stage ${a===3.5?'3 or 4':a}</b>`}; },
+  which(){ const [q,k]=pick(WHICH); const M=MODELS[k]; return {label:'Which model?',q,kind:'text',ph:'Name the model or theory',check:v=>M.core(v.toLowerCase()),sol:`<b>${esc(M.name)}</b>`}; },
+  calc(){ const g=GEN[pick(Object.keys(GEN))](); return {...g,kind:'num',ph:'Your answer',check:v=>Math.abs(v-g.ans)<=g.tol+1e-9}; },
+};
+const MODES=[['profiles','Stage profiles'],['fill','Fill the table'],['stage','Name the stage'],['which','Which model?'],['calc','Calculations'],['mix','Mixed']];
+const N = {mode:'profiles', q:null, state:'ask', right:0, total:0, lastQ:'', typed:''};
+const P = {grp:'all', queue:[], cur:null, total:0, done:0, state:'write', text:''};
+
+function renderModes(){
+  $('#num-modes').innerHTML=MODES.map(([m,l])=>`<button class="chip" data-m="${m}" aria-pressed="${N.mode===m}">${l}</button>`).join('');
+  document.querySelectorAll('#num-modes .chip').forEach(c=>c.onclick=()=>{ N.mode=c.dataset.m; renderModes(); if(N.mode==='profiles'){ P.cur==null&&!P.queue.length?buildProf():renderNum(); } else newQ(); });
+}
+function newQ(){
+  let m=N.mode==='mix'?pick(['fill','fill','stage','which','calc']):N.mode, q, tries=0;
+  do{ q=MAKE[m](); tries++; }while(q.q===N.lastQ && tries<8);
+  N.lastQ=q.q; N.q=q; N.state='ask'; N.typed=''; renderNum();
+}
+function buildProf(){ P.queue=shuffle(PROF.map((_,i)=>i).filter(i=>P.grp==='all'||PROF[i].grp===P.grp)); P.total=P.queue.length; P.done=0; P.cur=null; nextProf(); }
+function nextProf(re){ if(re&&P.cur!=null) P.queue.splice(Math.min(3,P.queue.length),0,P.cur); P.cur=P.queue.length?P.queue.shift():null; P.state='write'; P.text=''; renderNum(); }
+function renderNum(){ N.mode==='profiles'?renderProf():renderQ(); }
+
+function renderProf(){
+  const el=$('#num-card');
+  const grps=[['all','All'],['dtm','DTM'],['etm','ETM'],['zel','Zelinsky'],['other','Other models']];
+  const bar=`<div class="bar"><div class="seg" role="group" aria-label="Which model">${grps.map(([g,l])=>`<button data-g="${g}" aria-pressed="${P.grp===g}">${l}</button>`).join('')}</div><span class="count">${P.done} / ${P.total} solid</span></div>`;
+  let card;
+  if(P.cur==null){
+    card=`<div class="card"><p class="label">All profiles solid</p><p class="prompt">You recalled every profile in this set.</p><div class="row"><button class="btn primary" id="p-restart">Shuffle and go again</button></div></div>`;
+  } else {
+    const p=PROF[P.cur];
+    if(P.state==='write'){
+      card=`<div class="card"><p class="label">Stage profile</p><p class="prompt term">${esc(p.title)}</p><p class="tip">${esc(p.ask)}</p>
+        <label for="p-text" style="position:absolute;left:-9999px">Your answer</label>
+        <textarea id="p-text" placeholder="Write everything you remember about it"></textarea>
+        <div class="row"><button class="btn primary" id="p-reveal">Check against the profile</button><button class="btn ghost" id="p-skip">Skip for now</button><span class="kbd">Ctrl + Enter</span></div></div>`;
+    } else {
+      card=`<div class="card"><p class="label">Stage profile</p><p class="prompt term">${esc(p.title)}</p>
+        <div class="fb" style="background:var(--sunk)"><strong style="color:var(--muted)">What you wrote</strong><p style="white-space:pre-wrap">${esc(P.text)}</p></div>
+        <div class="tbl profile"><table><tbody>${p.rows.map(([k,v])=>`<tr><th scope="row">${esc(k)}</th><td>${esc(v)}</td></tr>`).join('')}</tbody></table></div>
+        <p class="tip">How much did you get? Anything less than all of it comes back in a few cards.</p>
+        <div class="row"><button class="btn good" id="p-got">Got it all</button><button class="btn mid" id="p-part">Partly</button><button class="btn bad" id="p-miss">Missed most</button></div></div>`;
+    }
+  }
+  el.innerHTML=bar+card;
+  el.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{ P.grp=b.dataset.g; buildProf(); });
+  if($('#p-restart')) $('#p-restart').onclick=buildProf;
+  if($('#p-text')){ const ta=$('#p-text'); ta.focus();
+    ta.addEventListener('keydown',e=>{ if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); $('#p-reveal').click(); }});
+    $('#p-reveal').onclick=()=>{ P.text=ta.value; if(!P.text.trim()){ ta.focus(); return; } P.state='grade'; renderNum(); };
+    $('#p-skip').onclick=()=>nextProf(true); }
+  if($('#p-got')){ $('#p-got').onclick=()=>{ score(true); P.done++; nextProf(); };
+    $('#p-part').onclick=()=>{ score(false); nextProf(true); };
+    $('#p-miss').onclick=()=>{ score(false); nextProf(true); }; }
+}
+
+function renderQ(){
+  const q=N.q, el=$('#num-card');
+  let fb='';
+  if(N.state!=='ask'){ fb=`<div class="fb ${N.state==='right'?'ok':'no'}"><strong>${N.state==='right'?'Correct.':N.state==='reveal'?'Here’s the answer.':'Not quite.'}</strong><p class="solution">${q.sol}</p></div>`; }
+  const actions = N.state==='ask'
+    ? `<button class="btn primary" id="n-check">Check</button><button class="btn ghost" id="n-reveal">${q.kind==='num'&&q.label!=='Name the stage'?'Show me how':'I don’t know'}</button>`
+    : `<button class="btn primary" id="n-next">Next question</button>${N.state==='wrong'&&q.kind==='text'?'<button class="btn ghost" id="n-override">I had it right</button>':''}`;
+  el.innerHTML=`<div class="card">
+    <div class="row" style="justify-content:space-between"><p class="label">${esc(q.label)}${q.pre?' · '+esc(q.pre):''}</p><span class="count">${N.right} / ${N.total} correct</span></div>
+    <p class="prompt">${esc(q.q)}</p>
+    <div class="row" style="flex-wrap:nowrap"><label for="n-input" style="position:absolute;left:-9999px">Your answer</label>
+      <input type="text" id="n-input" ${q.kind==='num'?'inputmode="decimal" style="max-width:220px;font-family:var(--mono)"':''} autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${esc(q.ph||'')}" ${N.state!=='ask'?'readonly':''} value="${esc(N.typed)}">
+      ${q.unit?`<span class="tip" style="min-width:0">${esc(q.unit)}</span>`:''}</div>
+    ${fb}<div class="row">${actions}<span class="kbd">Enter</span></div></div>`;
+  const inp=$('#n-input');
+  if(N.state==='ask') inp.focus();
+  const check=()=>{ const raw=inp.value; if(!raw.trim()){ inp.focus(); return; }
+    let ok;
+    if(q.kind==='num'){ const v=parseFloat(raw.replace(/[,%\s]/g,'').replace(/^stage/i,'')); if(isNaN(v)){ inp.focus(); return; } ok=q.check(v); }
+    else ok=q.check(raw);
+    N.typed=raw; N.total++; if(ok) N.right++; score(ok); N.state=ok?'right':'wrong'; renderNum(); };
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); N.state==='ask'?check():newQ(); }});
+  if($('#n-check')){ $('#n-check').onclick=check; $('#n-reveal').onclick=()=>{ N.typed=''; N.total++; score(false); N.state='reveal'; renderNum(); }; }
+  if($('#n-next')){ $('#n-next').onclick=newQ; $('#n-next').focus(); }
+  if($('#n-override')) $('#n-override').onclick=()=>{ N.right++; unscoreMiss(); N.state='right'; renderNum(); };
+}
+function initModels(){ renderSheet(); renderModes(); buildProf(); }
+
+/* ---------- boot ---------- */
+buildDeck(); renderChips(); renderBlurt(); nextScen(); initModels();
+const savedTab=store.get('tab','terms'); if(TABS.includes(savedTab)) showTab(savedTab);
+if(savedTab==='terms') setTimeout(()=>{ const i=$('#t-input'); if(i) i.focus(); },0);
+</script>
+</body>
+</html>
