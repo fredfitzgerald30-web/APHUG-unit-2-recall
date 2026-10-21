@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Population Recall Lab</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..112,500..800&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
 :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -17,9 +14,9 @@ html{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!i
   --accent:#0E6B70; --accent-soft:#DCEEEF; --accent-ink:#FFFFFF;
   --warm:#9C7400; --warm-soft:#F5ECD2;
   --good:#22713A; --good-soft:#E1F1E5; --bad:#B42318; --bad-soft:#FBE4E1;
-  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
-  --body:"Source Sans 3","Segoe UI",system-ui,sans-serif;
-  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --display:-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue","Segoe UI",Roboto,sans-serif;
+  --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","Segoe UI",Roboto,sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0F141B; --surface:#171E28; --sunk:#121820; --ink:#E5E9EF; --muted:#97A2B3; --line:#2A3443;
@@ -41,7 +38,7 @@ header.top{padding-block:28px 18px}
 .brand svg{flex:none;width:52px;height:46px}
 .brand .m{fill:var(--accent)} .brand .f{fill:var(--warm)}
 .eyebrow{margin:0;font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-h1{margin:2px 0 0;font-family:var(--display);font-stretch:85%;font-weight:800;font-size:clamp(28px,6vw,38px);line-height:1.05;text-wrap:balance}
+h1{margin:2px 0 0;font-family:var(--display);letter-spacing:-.02em;font-weight:800;font-size:clamp(28px,6vw,38px);line-height:1.05;text-wrap:balance}
 .lede{margin:6px 0 0;color:var(--muted);font-size:15px}
 .tally{font-family:var(--mono);font-size:13px;color:var(--muted);text-align:right}
 .tally b{display:block;font-size:26px;color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
@@ -61,7 +58,7 @@ main{padding-block:18px 48px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px clamp(16px,4vw,28px);display:grid;gap:14px}
 .label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0}
 .prompt{margin:0;font-size:clamp(19px,3.4vw,23px);line-height:1.35;font-weight:600;text-wrap:pretty}
-.prompt.term{font-family:var(--display);font-stretch:90%;font-weight:800;font-size:clamp(26px,5vw,34px)}
+.prompt.term{font-family:var(--display);letter-spacing:-.02em;font-weight:800;font-size:clamp(26px,5vw,34px)}
 input[type=text],textarea{width:100%;font:inherit;color:var(--ink);background:var(--sunk);border:1.5px solid var(--line);border-radius:10px;padding:11px 13px}
 textarea{min-height:130px;resize:vertical;line-height:1.45}
 input:focus,textarea:focus{outline:none;border-color:var(--accent)}
@@ -79,7 +76,7 @@ button:focus-visible,.chip:focus-visible{outline:2.5px solid var(--accent);outli
 .fb strong{font-size:15px}
 .fb.ok strong{color:var(--good)} .fb.no strong{color:var(--bad)} .fb.info strong{color:var(--accent)}
 .fb p{margin:0}
-.answer{font-family:var(--display);font-stretch:90%;font-weight:700;font-size:20px}
+.answer{font-family:var(--display);letter-spacing:-.02em;font-weight:700;font-size:20px}
 .solution{font-family:var(--mono);font-size:14px;line-height:1.6;color:var(--ink)}
 
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
@@ -94,7 +91,7 @@ ul.check label.on{border-color:var(--good);background:var(--good-soft)}
 .auto{font-family:var(--mono);font-size:11px;color:var(--good);margin-left:auto;white-space:nowrap;padding-left:8px}
 ul.keys{margin:4px 0 0;padding-left:20px}
 ul.keys li{margin:2px 0}
-.big{font-family:var(--display);font-weight:800;font-stretch:85%;font-size:54px;line-height:1;margin:0}
+.big{font-family:var(--display);font-weight:800;letter-spacing:-.02em;font-size:54px;line-height:1;margin:0}
 .missed-list{display:flex;flex-wrap:wrap;gap:6px}
 .missed-list span{background:var(--bad-soft);color:var(--bad);border-radius:6px;padding:3px 9px;font-size:14px;font-weight:600}
 .tip{font-size:14px;color:var(--muted);margin:0}
@@ -117,7 +114,6 @@ ul.keys li{margin:2px 0}
       <div>
         <p class="eyebrow">AP Human Geography · Unit 2</p>
         <h1>Population Recall Lab</h1>
-        <p class="lede">Pull every answer out of your own head first. Then check.</p>
       </div>
     </div>
     <div class="tally"><b id="tally">0 / 0</b>recalled this session</div>
@@ -136,7 +132,6 @@ ul.keys li{margin:2px 0}
 <main class="wrap">
   <!-- TERMS -->
   <section id="pane-terms" role="tabpanel" aria-labelledby="tab-terms">
-    <p class="intro">Read the clue and type the answer from memory. Missed cards come back a few cards later until you get them.</p>
     <div class="bar">
       <div class="seg" role="group" aria-label="Direction">
         <button id="dir-d2t" aria-pressed="true">Definition → term</button>
@@ -152,21 +147,18 @@ ul.keys li{margin:2px 0}
 
   <!-- BLURT -->
   <section id="pane-blurt" role="tabpanel" aria-labelledby="tab-blurt" hidden>
-    <p class="intro">Pick a topic and write down everything you know about it, without looking. Then check your brain dump against the list of what a full answer covers.</p>
     <div class="chips" id="blurt-chips"></div>
     <div id="blurt-card"></div>
   </section>
 
   <!-- SCENARIOS -->
   <section id="pane-scen" role="tabpanel" aria-labelledby="tab-scen" hidden>
-    <p class="intro">FRQ-style questions. Write your answer like you would on the test, then compare it to a model answer and grade yourself honestly. Anything you miss comes back later.</p>
     <div class="bar"><span class="count" id="scen-count"></span></div>
     <div id="scen-card"></div>
   </section>
 
   <!-- NUMBERS -->
   <section id="pane-num" role="tabpanel" aria-labelledby="tab-num" hidden>
-    <p class="intro">Fresh numbers every time. Work out the answer before you check, and use the worked solution if you miss.</p>
     <div class="bar">
       <div class="seg" role="group" aria-label="Question type">
         <button id="nf-mix" aria-pressed="true">Mixed</button>
